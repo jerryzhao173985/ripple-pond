@@ -1,0 +1,6 @@
+# Don't publish internal/dev files — only the playable static app ships.
+.claude/
+.omc/
+.playwright-mcp/
+docs/
+.git/
