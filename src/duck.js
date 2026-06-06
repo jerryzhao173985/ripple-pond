@@ -49,7 +49,8 @@ export class FloatingBody {
     this.target = new THREE.Vector2();   // pointer position while grabbed
     this.grabK = 42;                      // spring stiffness toward the pointer
     this.grabDrag = 8;                    // damping while held (responsive but laggy)
-    this.restitution = 0.62;              // wall bounciness
+    this.restitution = 0.6;               // wall bounciness
+    this.spin = 0;                        // throw spin (decays back to facing-motion)
 
     this._up = new THREE.Vector3(0, 0, 1);
     this._n = new THREE.Vector3();
@@ -99,15 +100,20 @@ export class FloatingBody {
     this.mesh.position.set(this.pos.x, this.pos.y, sample.height + this.floatOffset + bob);
     if (this.shadow) this.shadow.position.set(this.pos.x, this.pos.y, 0.045);
 
-    // Steer yaw toward motion; otherwise gentle drift-spin.
-    const speed = this.vel.length();
-    if (speed > 0.15) {
-      const target = Math.atan2(this.vel.y, this.vel.x);
-      let d = target - this.yaw;
-      d = Math.atan2(Math.sin(d), Math.cos(d));
-      this.yaw += d * Math.min(1, dt * 2.0);
+    // Spin from a hard throw overrides steering, then decays back to facing-motion.
+    if (Math.abs(this.spin) > 0.15) {
+      this.yaw += this.spin * dt;
+      this.spin *= Math.exp(-2.2 * dt);
     } else {
-      this.yaw += this.yawRate * dt;
+      const speed = this.vel.length();
+      if (speed > 0.15) {
+        const target = Math.atan2(this.vel.y, this.vel.x);
+        let d = target - this.yaw;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        this.yaw += d * Math.min(1, dt * 2.0);
+      } else {
+        this.yaw += this.yawRate * dt;
+      }
     }
 
     this._n.set(sample.nx * this.tiltAmt, sample.ny * this.tiltAmt, 1).normalize();

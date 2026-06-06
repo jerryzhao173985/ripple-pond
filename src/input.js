@@ -21,6 +21,11 @@ export class Input {
     this.dragging = false;
     this.lastUv = null;
 
+    // Flick tracking for crisp, velocity-based throws.
+    this.flick = new THREE.Vector2();
+    this._lastW = new THREE.Vector2();
+    this._lastMoveT = 0;
+
     this._onDown = this._onDown.bind(this);
     this._onMove = this._onMove.bind(this);
     this._onUp = this._onUp.bind(this);
@@ -52,6 +57,9 @@ export class Input {
 
     if (this.game.tryGrab(wx, wy)) {
       this.grabbing = true;
+      this.flick.set(0, 0);
+      this._lastW.set(wx, wy);
+      this._lastMoveT = performance.now();
       this.sim.tap(uv.x, uv.y, -0.05, 0.05);     // small splash on grab
     } else {
       this.dragging = true;
@@ -68,6 +76,12 @@ export class Input {
     if (!uv) return;
     if (this.grabbing) {
       const { wx, wy } = this._world(uv);
+      const now = performance.now();
+      const dt = Math.max(0.001, (now - this._lastMoveT) / 1000);
+      const ivx = (wx - this._lastW.x) / dt, ivy = (wy - this._lastW.y) / dt;
+      this.flick.set(this.flick.x * 0.4 + ivx * 0.6, this.flick.y * 0.4 + ivy * 0.6); // smoothed flick
+      this._lastW.set(wx, wy);
+      this._lastMoveT = now;
       this.game.dragDuck(wx, wy);
     } else if (this.dragging) {
       this.sim.inject(uv.x, uv.y, -0.032, 0.05);  // ripple trail
@@ -79,7 +93,12 @@ export class Input {
   }
 
   _onUp() {
-    if (this.grabbing) { this.game.releaseDuck(); this.grabbing = false; }
+    if (this.grabbing) {
+      // If the pointer was held still before release, it's a soft drop (no flick).
+      const idle = (performance.now() - this._lastMoveT) > 110;
+      this.game.releaseDuck(idle ? 0 : this.flick.x, idle ? 0 : this.flick.y);
+      this.grabbing = false;
+    }
     this.dragging = false;
   }
 }

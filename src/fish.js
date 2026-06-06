@@ -102,13 +102,15 @@ export class Fish {
     this.pos = new THREE.Vector2((Math.random() - 0.5) * bounds * 0.45, (Math.random() - 0.5) * bounds * 0.45);
     this.vel = new THREE.Vector2();
     this.heading = Math.random() * Math.PI * 2;
-    this.depth = 0.55 + Math.random() * 0.35;
+    this.depth = 0.82 + Math.random() * 0.13;   // start genuinely deep (spotted gradually)
     this.targetDepth = this.depth;
     this.fear = 0;
     this.stun = 0;
     this.jukeCd = 0;
     this.escape = 0;     // guaranteed escape-dart timer after a bump (anti-pin)
     this.noBump = 0;     // can't be re-bumped until it has darted away
+    this.panic = 0;      // builds when cornered with nowhere calm to flee
+    this.shelterBall = null; // ball it's hiding under (occluded from above)
     this.caught = false;
     this.onSurface = false;
     this.wander = 0;
@@ -116,13 +118,14 @@ export class Fish {
     this.swim = Math.random() * 6.28;
     this._safe = new THREE.Vector2();
     this._away = new THREE.Vector2();
+    this._toBall = new THREE.Vector2();
     this.mesh.scale.setScalar(this.size);
   }
 
   setLimits(limX, limY) { this.limX = limX; this.limY = limY; }
   get uv() { return { x: this.pos.x / this.bounds + 0.5, y: this.pos.y / this.bounds + 0.5 }; }
 
-  update(dt, disturb, mem, time, duckPos, duckVel) {
+  update(dt, disturb, mem, time, duckPos, duckVel, balls, school) {
     if (this.caught) return; // game handles floating
 
     // --- sense threats ---
@@ -141,45 +144,80 @@ export class Fish {
     this.escape = Math.max(0, this.escape - dt);
     this.noBump = Math.max(0, this.noBump - dt);
 
+    // --- panic / shelter: if you've rippled EVERYWHERE (nowhere calm to flee), a cornered
+    // fish bolts under the nearest ball, where it's occluded from above. Bank-shot the ball to flush it. ---
+    mem.safeDir(this.pos.x, this.pos.y, this._safe);
+    const safeMag = this._safe.length();
+    const cornered = this.fear > 0.7 && (memHere > 0.5 || safeMag < 0.12);
+    this.panic = cornered ? Math.min(2, this.panic + dt) : Math.max(0, this.panic - dt * 0.8);
+    if (!this.shelterBall && this.panic > 1.0 && balls && balls.length) {
+      let bb = null, bd = 1e9;
+      for (const b of balls) { const d = (b.x - this.pos.x) ** 2 + (b.y - this.pos.y) ** 2; if (d < bd) { bd = d; bb = b; } }
+      this.shelterBall = bb;
+    }
+    if (this.shelterBall && this.fear < 0.25) { this.shelterBall = null; this.panic = 0; }
+
     // --- decide heading + speed ---
     this.wander -= dt;
     if (this.wander <= 0) { this.heading += (Math.random() - 0.5) * 1.4; this.wander = 0.3 + Math.random() * 0.8; }
 
     let speed;
     if (this.escape > 0) {
-      // Guaranteed escape-dart after a bump (heading set away from the duck at bump time):
-      // you CANNOT pin a fish — every hit forces you to re-approach.
+      // Guaranteed escape-dart after a bump → you CANNOT pin a fish.
       speed = 7.5 * this.size;
-      this.targetDepth = this.depth;                               // hold the bump's gain during the dart
-    } else if (this.fear > 0.4) {
-      // Flee away from the duck (primary) blended with safe (low-memory) water.
-      mem.safeDir(this.pos.x, this.pos.y, this._safe);
+      this.targetDepth = this.depth;
+    } else if (this.shelterBall) {
+      // Bolt under the nearest ball and hover there (the ball hides it from above).
+      this._toBall.set(this.shelterBall.x - this.pos.x, this.shelterBall.y - this.pos.y);
+      const dB = this._toBall.length();
+      const ang = Math.atan2(this._toBall.y, this._toBall.x);
+      const d = Math.atan2(Math.sin(ang - this.heading), Math.cos(ang - this.heading));
+      this.heading += d * Math.min(1, dt * 6);
+      speed = (dB > 0.45 ? 4.0 : 0.25) * this.size;                 // rush in, then hide still
+      this.targetDepth = this.depth;
+    } else if (this.fear > 0.3) {
+      // Agitated near the surface — too spooked to settle, so it HOLDS its depth (won't dive).
+      // That's why bumps accumulate: keep it scared and it can't rest-dive your progress away.
       let ax = this._away.x, ay = this._away.y;
-      if (duckDist > 6) { ax = this._safe.x; ay = this._safe.y; }   // no duck near → just seek calm
+      if (duckDist > 6) { ax = this._safe.x; ay = this._safe.y; }
       let fleeAng = (ax || ay) ? Math.atan2(ay, ax) : this.heading + Math.PI;
-
-      // JUKE: if the duck is close & closing, break hard sideways so a tracker overshoots.
-      if (duckDist < 2.4 && duckClosing > 0.4 && this.jukeCd <= 0) {
+      if (duckDist < 2.6 && duckClosing > 0.3 && this.jukeCd <= 0) {
         const side = Math.random() < 0.5 ? 1 : -1;
         fleeAng += side * (Math.PI * 0.5 + Math.random() * 0.5);
-        this.jukeCd = 0.4 + Math.random() * 0.35;
-        speed = (5.5 + this.fear * 1.5) * this.size;                // burst on the juke
+        this.jukeCd = 0.32 + Math.random() * 0.3;
+        speed = (6.2 + this.fear * 1.5) * this.size;     // sharper, faster break
       } else {
-        speed = (3.0 + this.fear * 2.0) * this.size;
+        speed = (3.4 + this.fear * 2.0) * this.size;
       }
       const d = Math.atan2(Math.sin(fleeAng - this.heading), Math.cos(fleeAng - this.heading));
       this.heading += d * Math.min(1, dt * 7);
-      this.targetDepth = Math.min(0.82, this.depth + 0.22);         // dives modestly when scared
+      this.targetDepth = this.depth;                                // HOLD — agitated, won't dive
     } else {
-      this.targetDepth += ((0.4 + 0.22 * Math.sin(time * 0.3 + this.pos.x)) - this.targetDepth) * Math.min(1, dt);
-      speed = 1.05 * this.size;
+      // Calm → it RESTS and recovers by sinking deep (undoing your progress). Keep the pressure on!
+      this.targetDepth += (0.92 - this.targetDepth) * Math.min(1, dt * 0.5);
+      speed = 1.0 * this.size;
+    }
+
+    // --- separation: fish never stack (so one strike can't hit a cluster) ---
+    if (school && !this.shelterBall) {
+      let sx = 0, sy = 0, cnt = 0;
+      for (const other of school) {
+        if (other === this || other.caught) continue;
+        const dx = this.pos.x - other.pos.x, dy = this.pos.y - other.pos.y;
+        const d2 = dx * dx + dy * dy;
+        if (d2 < 6.25 && d2 > 1e-4) { const inv = 1 / Math.sqrt(d2); sx += dx * inv; sy += dy * inv; cnt++; }
+      }
+      if (cnt) {
+        const sepAng = Math.atan2(sy, sx);
+        const d = Math.atan2(Math.sin(sepAng - this.heading), Math.cos(sepAng - this.heading));
+        this.heading += d * Math.min(0.6, dt * 3.0);
+      }
     }
 
     // --- integrate ---
     this.vel.set(Math.cos(this.heading) * speed, Math.sin(this.heading) * speed);
     this.pos.addScaledVector(this.vel, dt);
-    // SLOW sink so repeated bump-gains accumulate toward the surface.
-    this.depth += (this.targetDepth - this.depth) * Math.min(1, dt * 0.3);
+    this.depth += (this.targetDepth - this.depth) * Math.min(1, dt * 0.5);
 
     const lx = this.limX - 0.4, ly = this.limY - 0.4;
     if (this.pos.x > lx || this.pos.x < -lx) { this.pos.x = Math.max(-lx, Math.min(lx, this.pos.x)); this.heading = Math.PI - this.heading; }
@@ -191,16 +229,31 @@ export class Fish {
     this._place();
   }
 
-  /** Duck knock: rise + dart AWAY from the duck + spike fear. Returns true if caught. */
-  bump(catchDepth = 0.25, duckPos = null) {
-    this.depth = Math.max(-0.02, this.depth - 0.22);
+  /**
+   * Duck knock: rise (scaled by IMPACT SPEED — a hard thrown duck slams it way up, a gentle
+   * drag barely nudges), dart away, spike fear, knock it out of any shelter. Returns true if caught.
+   */
+  bump(catchDepth = 0.22, duckPos = null, impactSpeed = 4) {
+    // Lift scales with impact (hard throw >> gentle drag) but is CAPPED so even a hard hit
+    // from rest-depth can never one-shot a fish — it always takes several hits to land it.
+    const rise = Math.max(0.1, Math.min(0.3, 0.07 + impactSpeed * 0.012));
+    this.depth = Math.max(-0.02, this.depth - rise);
     this.targetDepth = this.depth;
     this.fear = 1.5;
+    this.shelterBall = null; this.panic = 0;
     if (duckPos) this.heading = Math.atan2(this.pos.y - duckPos.y, this.pos.x - duckPos.x); // flee vector
-    this.escape = 0.45;               // guaranteed dart away → can't be pinned
-    this.noBump = 0.45;               // ...and can't be re-hit until it has fled
+    this.escape = 0.5;                // guaranteed dart away → can't be pinned
+    this.noBump = 0.5;                // ...and can't be re-hit until it has fled
     if (this.depth <= catchDepth) { this.caught = true; return true; }
     return false;
+  }
+
+  /** Bank-shotting the ball it hides under flushes it into the open (no damage — the ball took
+   *  the hit). It bolts away agitated; the ball is then "discovered" (game keeps it off-limits). */
+  flush() {
+    this.shelterBall = null; this.panic = 0;
+    this.fear = 1.5; this.escape = 0.7;
+    this.heading += Math.PI + (Math.random() - 0.5);
   }
 
   _place() {
@@ -208,9 +261,9 @@ export class Fish {
     this.mesh.position.set(this.pos.x, this.pos.y, z);
     this.mesh.rotation.z = this.heading;
     const fade = 1 - this.depth;
-    // body/tail: deeper → fainter + bluer; shadow grows softer/larger with depth.
-    const col = new THREE.Color(0x16323f).lerp(new THREE.Color(0x0a3148), this.depth * 0.5);
-    const op = 0.5 + fade * 0.5;
+    // Deeper → much fainter + bluer (a vague "guess"); clear only when driven shallow.
+    const col = new THREE.Color(0x16323f).lerp(new THREE.Color(0x0e3a52), this.depth * 0.7);
+    const op = 0.22 + fade * fade * 0.6;     // fades off fast with depth
     this.parts.bodyMat.color.copy(col); this.parts.bodyMat.opacity = op;
     this.parts.tailMat.color.copy(col); this.parts.tailMat.opacity = op;
     this.parts.shadow.position.z = -0.02 - this.depth * 0.02;

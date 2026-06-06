@@ -1,56 +1,81 @@
 {
-  "memories": [],
+  "memories": [
+    {
+      "type": "project",
+      "content": "Project 'Ripple Pond' (/Users/jerry/pool): a top-down Three.js water game. Began as a video-faithful interactive pool, then the user PIVOTED it to 'Hunt the Fish'. Core engine the user explicitly likes & wants kept: the GPU FDTD ripple simulation + floating physics. Herding levels + Free Play remain as optional side modes; drains/ducklings were retired.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    },
+    {
+      "type": "decision",
+      "content": "Hunt-the-Fish design (one 'stress = depth' axis, no separate health bar by deliberate choice): fish hide at depth, invisible in calm water and REVEALED by rippling (which also scares them). Grab & fling the duck to BUMP fish shallower; bump lift scales with the duck's impact speed (hard throw slams up, drag barely nudges). Scared fish HOLD depth (bumps accumulate); calm fish REST & sink deep (recover) → must maintain pressure. Cornered fish (rippled everywhere) HIDE under a beach ball; bank-shot the ball to flush them. Anti-pin: each bump triggers a guaranteed escape-dart. Catch all to win.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    },
+    {
+      "type": "preference",
+      "content": "User preferences/working style: values REAL physical simulation and NATIVE/emergent mechanics over bolted-on rules; wants design reasoning + tradeoffs explained, not just code. Iterates via continuous steering — give a concrete build + measurements, ask focused questions, tune to feel. Wants me to playtest the live app myself and verify with evidence. Tends to ask 'is it harder/easier/cooler' feel-questions only they can judge.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    },
+    {
+      "type": "reference",
+      "content": "Tech & run: Three.js r0.184.0 via CDN importmap (jsDelivr); GPU FDTD wave sim with multi-source Mexican-hat ripples (src/sim.js); fish rendered to a full-pool render target revealed by the water shader's slope-gated 'clarity' (src/underwater.js, src/water.js uBaseClarity/uReveal); fish AI + DisturbanceMemory in src/fish.js. Run: cd /Users/jerry/pool && python3 -m http.server 8080. Needs WebGL2 + EXT_color_buffer_float. Verified 60fps at Retina DPR2 (2400x1626). Tuning knobs: difficulty in src/fish.js; reveal in src/water.js; duck feel (drag/restitution/throw) in src/duck.js + game.js.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    },
+    {
+      "type": "convention",
+      "content": "Verification workflow with Playwright MCP: screenshots are NOT returned inline and `filename` outputs land in the project root (clean them up). To SEE a WebGL render: a tiny local server (/tmp/pool_server.py) serves the app AND accepts POST /shot; in-page, renderer.render then canvas.toDataURL JPEG and fetch('/shot?name=...') → file in /tmp/pool_shots → Read it. main.js exposes window.__pond = {sim,water,game,camera,renderer,scene,THREE} for in-page instrumentation, real PointerEvent dispatch, FPS probes, and bot-driving tests. After testing: rm -rf .playwright-mcp and stray *.jpeg/*.txt.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    },
+    {
+      "type": "convention",
+      "content": "Housekeeping for this project: keep README.md (run instructions + physics/design writeup + sources) and project memory in sync with each pivot. Self-contained — all art is procedural (tiles, duck, fish, balls), no binary assets. ~14 src modules. Always confirm console is clean and re-verify 60fps at forced DPR 2 after changes.",
+      "added_at": "2026-06-06T05:30:00",
+      "source": "consolidated"
+    }
+  ],
   "manual_memories": [],
   "realtime_memories": [
     {
       "type": "claude_response",
-      "content": "Done. **Ripple Pond** is built, verified in a real browser, and the dev server is live — open **http://localhost:8080** to play it right now.\n\n## What you got\n\nA top-down Three.js pool that matches yo",
-      "added_at": "2026-06-05T19:41:12.289110",
+      "content": "Memory consolidated — 10 raw conversation captures reduced to **6 signal entries** (project, the Hunt-the-Fish design decision, your working-style preferences, the tech/run reference, the Playwright v",
+      "added_at": "2026-06-06T05:38:00.744690",
       "source": "realtime_capture"
     },
     {
       "type": "message",
-      "content": "This is not very good as I see this seem not very useful to play or annimation too lagging if you see closely that reference video or your frame pictures ytou get please I want more like that I want y",
-      "added_at": "2026-06-05T19:41:12.289124",
+      "content": "Carpet-bomb ripples and watch a fish vanish under a ball, then ram that ball to flush it Yes, so basically the fish if hidden under the ball and you strike duck toi the ball then the dish will run awa",
+      "added_at": "2026-06-06T05:38:00.744712",
       "source": "realtime_capture"
     },
     {
       "type": "claude_response",
-      "content": "You were right on all counts — let me show what I fixed. **Reload http://localhost:8080 (hard-reload to get fresh files)** and you'll see the difference.\n\n## What was wrong → what I did\n\n**1. Lag (the",
-      "added_at": "2026-06-05T20:19:06.987993",
+      "content": "Done — the **5-second \"hot ball\"** is in. Now the full sync you asked for, so your mental model matches the code exactly.\n\n## 🎣 Ripple Pond — every narrative in the game right now\n\n**① The water is re",
+      "added_at": "2026-06-06T05:51:26.464768",
       "source": "realtime_capture"
     },
     {
       "type": "message",
-      "content": "Now I want you to play thid for me and in the sametime you use someway to monitort or get the same ideas of the web to manipulate so we know how this interacts and see from this what to change fix and",
-      "added_at": "2026-06-05T20:19:06.988009",
+      "content": "Now the fishes are a bit more easier to catch I do not know why, what have been changed that seem however now it seem just strike duck once correct place then the fishes are caught and no need for sec",
+      "added_at": "2026-06-06T05:51:26.464796",
       "source": "realtime_capture"
     },
     {
       "type": "claude_response",
-      "content": "Done — I played the whole game while instrumenting the live page, gave you the precise foundation report, fixed a real bug, and implemented all four improvements with measured verification. **Reload h",
-      "added_at": "2026-06-05T21:00:35.353903",
+      "content": "Fixed all three — and you were right to suspect they were connected. Here's the first-principles trace and what I did. **Reload http://localhost:8080.**\n\n## ① Fish got too easy → one-shot bug\n**Root c",
+      "added_at": "2026-06-06T05:58:50.588303",
       "source": "realtime_capture"
     },
     {
       "type": "message",
-      "content": "The ripple effect and phisical real simulation calculation is what I think is good. However this game is not what I really wanted, here is what I want and following trhe original frames/video that I w",
-      "added_at": "2026-06-05T21:00:35.353949",
-      "source": "realtime_capture"
-    },
-    {
-      "type": "claude_response",
-      "content": "Autopilot cancelled cleanly (resume state preserved, skill-active cleared). Here's the final state.\n\n## 🎣 Ripple Pond — \"Hunt the Fish\" is complete and playable\n**Reload http://localhost:8080 → 🎣 Hunt",
-      "added_at": "2026-06-06T04:49:38.157430",
-      "source": "realtime_capture"
-    },
-    {
-      "type": "message",
-      "content": "very good, now this work well, intention id clear and fish are a little bit easy to spot as I can see the shape and only a little bit to catch the throw feel good although seem like can improve a litt",
-      "added_at": "2026-06-06T04:49:38.157450",
+      "content": "Very very good now I want you commit for me properly (include the memory file as well)",
+      "added_at": "2026-06-06T05:58:50.588323",
       "source": "realtime_capture"
     }
   ],
   "created_at": "2026-06-05T19:41:12.286071",
-  "updated_at": "2026-06-06T04:49:38.157452"
+  "updated_at": "2026-06-06T05:58:50.588324"
 }

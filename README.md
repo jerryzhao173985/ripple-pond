@@ -108,8 +108,15 @@ as the floor, gated by a **clarity** term `clamp(base + surfaceSlope·reveal)`:
 The beautiful part: the **same disturbance field** (`|height| + |slope|`) that the shader uses to
 *reveal* a fish is what each fish *reads* to panic — so finding them and scaring them are one act.
 Fish also flee the duck directly, **juke** sideways when it closes (no pinning), and steer away
-from a decaying **memory grid** of recently-touched cells. A duck **bump** knocks a fish shallower
-and it sinks back slowly, so hits **accumulate** it to the surface = a catch.
+from a decaying **memory grid** of recently-touched cells.
+
+Catching is a game of **pressure**, modelled on one axis (depth = how hunted a fish is):
+- A **bump** knocks a fish shallower, scaled by the duck's **impact speed** — a hard *thrown* duck
+  slams it way up, a gentle drag barely nudges it.
+- A **scared** fish is too agitated to dive, so it *holds* depth → your bumps accumulate.
+- A **calm** fish *rests and sinks deep* (recovers) — so lose contact and you start over.
+- Ripple *everywhere* and a cornered fish (nowhere calm to flee) **hides under a ball**, where the
+  ball occludes it from above; **bank-shot the ball** with the duck to flush it back out.
 
 ---
 

@@ -1,0 +1,8 @@
+# OMC runtime/session state (not part of the project)
+.omc/
+
+# Playwright MCP scratch output
+.playwright-mcp/
+
+# OS / editor noise
+.DS_Store

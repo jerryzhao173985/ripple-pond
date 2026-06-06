@@ -66,6 +66,16 @@ const audio = new Audio();
 const game = new Game({ scene, sim, ui, audio, bounds: BOUNDS });
 game.attachUnderwater(underwater);
 
+// Throw aim guide — a faint streak from the duck along the drag direction while held.
+const aimGeo = new THREE.PlaneGeometry(1, 0.14);
+aimGeo.translate(0.5, 0, 0);   // pivot at the duck end so scaling extends forward
+const aim = new THREE.Mesh(aimGeo, new THREE.MeshBasicMaterial({
+  color: 0x9fe8ff, transparent: true, opacity: 0, depthWrite: false,
+}));
+aim.visible = false; aim.renderOrder = 2;
+scene.add(aim);
+game.aim = aim;
+
 // ---------- controller for UI ----------
 const controller = {
   playLevel: (i) => game.startLevel(i),

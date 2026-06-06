@@ -43,7 +43,7 @@ export class Game {
     scene.add(d.shadow, d.group);
     this.player = new FloatingBody(d.group, {
       bounds, radius: 1.0, floatOffset: 0.2, shadow: d.shadow,
-      drag: 0.7, push: 10.0, tiltAmt: 0.5, bobAmp: 0.055, bobRate: 1.8,
+      drag: 0.62, push: 10.0, tiltAmt: 0.5, bobAmp: 0.055, bobRate: 1.8,
     });
     this._lastWake = 0;
 
@@ -161,6 +161,7 @@ export class Game {
       o.body.setLimits(this.limX, this.limY);
       o.body.setPosition(n[0] * this.placeScale, n[1] * this.placeScale);
       o.group.visible = true;
+      o.flushCd = 0;            // "hot ball" timer: no sheltering here while > 0
       this.obstacles.push(o);
     });
     this.totalFish = count;
@@ -286,25 +287,39 @@ export class Game {
     return false;
   }
   dragDuck(wx, wy) { if (this.player.grabbed) this.player.target.set(wx, wy); }
-  releaseDuck() {
+  releaseDuck(vx = 0, vy = 0) {
     if (!this.player.grabbed) return;
     this.player.grabbed = false;
-    this.player.vel.multiplyScalar(1.45);          // throw boost
-    const max = 24, s = this.player.vel.length();
+    const flick = Math.hypot(vx, vy);
+    if (flick > 1.5) {
+      // CRISP throw: launch along your actual flick, not the laggy spring velocity.
+      this.player.vel.set(vx, vy).multiplyScalar(1.15);
+    } else {
+      this.player.vel.multiplyScalar(1.2);          // soft release keeps chase momentum
+    }
+    const max = 23, s = this.player.vel.length();
     if (s > max) this.player.vel.multiplyScalar(max / s);
+    // Spin juice ∝ throw speed; decays back to facing-motion.
+    this.player.spin = (Math.random() < 0.5 ? 1 : -1) * Math.min(12, s * 0.7);
+    if (this.aim) this.aim.visible = false;
   }
 
   /* ---------------- fish hunt ---------------- */
   _bumpFish() {
+    // One strike hits ONE fish (the nearest eligible). A fish sheltering under a ball is
+    // SHIELDED — only flushing (bank-shotting the ball) can dislodge it, never a bump.
     const reach = this.player.radius * 0.9 + 0.6;
+    let nearest = null, nd = reach;
     for (const f of this.fish) {
-      if (f.caught || f.noBump > 0) continue;        // must re-approach after each hit (no pinning)
-      if (this.player.pos.distanceTo(f.pos) < reach) {
-        const caught = f.bump(0.25, this.player.pos);
-        this.sim.tap(f.uv.x, f.uv.y, -0.06, 0.05);   // splash where it was knocked
-        this.audio?.plip?.();
-        if (caught) this._onFishCaught(f);
-      }
+      if (f.caught || f.noBump > 0 || f.shelterBall) continue;
+      const d = this.player.pos.distanceTo(f.pos);
+      if (d < nd) { nd = d; nearest = f; }
+    }
+    if (nearest) {
+      const caught = nearest.bump(0.22, this.player.pos, this.player.vel.length());
+      this.sim.tap(nearest.uv.x, nearest.uv.y, -0.06, 0.05);
+      this.audio?.plip?.();
+      if (caught) this._onFishCaught(nearest);
     }
   }
 
@@ -360,8 +375,13 @@ export class Game {
     if (this.mode === 'play') this._applyDrains(dt);
 
     // 3) Player physics.
+    const preSpeed = this.player.vel.length();
     const pHit = this.player.update(dt, samples[0], time);
-    if (pHit) this.sim.inject(pHit.x, pHit.y, -0.05, 0.06);
+    if (pHit) {
+      // wall splash scales with impact speed (+ a plip on a hard hit)
+      this.sim.tap(pHit.x, pHit.y, -0.06 - Math.min(0.12, preSpeed * 0.012), 0.06);
+      if (preSpeed > 3.5) this.audio?.plip?.();
+    }
 
     // Moving/dragged duck disturbs the water along its path (a wake).
     const sp = this.player.vel.length();
@@ -370,6 +390,23 @@ export class Game {
       this.sim.inject(uv.x, uv.y, -0.018 - Math.min(0.05, sp * 0.004), 0.05);
       this.memory.add(this.player.pos.x, this.player.pos.y, 0.6);
       this._lastWake = time;
+    }
+
+    // Aim guide: a streak from the duck along the drag direction (= your throw vector).
+    if (this.aim) {
+      if (this.player.grabbed && sp > 0.6) {
+        const ang = Math.atan2(this.player.vel.y, this.player.vel.x);
+        const len = Math.min(5.0, sp * 0.3);
+        const pw = Math.min(1, sp / 18);                 // throw power 0..1
+        this.aim.visible = true;
+        this.aim.position.set(this.player.pos.x, this.player.pos.y, 0.09);
+        this.aim.rotation.z = ang;
+        this.aim.scale.set(len, 0.9 + pw * 0.6, 1);      // fatter streak = harder throw
+        this.aim.material.color.setHSL(0.55 - pw * 0.42, 0.85, 0.62); // cyan→warm with power
+        this.aim.material.opacity = Math.min(0.6, 0.14 + sp * 0.05);
+      } else {
+        this.aim.visible = false;
+      }
     }
 
     // 4) Ducklings / obstacles / extra ducks physics.
@@ -381,11 +418,14 @@ export class Game {
     // Fish: sense disturbance, swim / flee / dive; caught ones float belly-up on the surface.
     if (this.mode === 'hunt') {
       this.memory.decay(dt);
+      for (const o of this.obstacles) o.flushCd = Math.max(0, (o.flushCd || 0) - dt);
+      // Fish won't shelter under a "hot" (recently bank-shot) ball.
+      const balls = this.obstacles.filter((o) => (o.flushCd || 0) <= 0).map((o) => o.body.pos);
       for (const f of this.fish) {
         if (f.caught) { this._floatCaught(f, dt, time); continue; }
         const s = samples[si++];
         const disturb = Math.abs(s.height) * 1.2 + Math.hypot(s.nx, s.ny) * 0.35;
-        f.update(dt, disturb, this.memory, time, this.player.pos, this.player.vel);
+        f.update(dt, disturb, this.memory, time, this.player.pos, this.player.vel, balls, this.fish);
       }
       this._bumpFish();
       if (!this.won) { this.huntTime += dt; this.ui.updateHuntHUD(this.fishCaught, this.totalFish, this.huntTime); }
@@ -454,10 +494,19 @@ export class Game {
         this.player.pos.y += ny * push;
         // Reflect velocity along the contact normal.
         const vn = this.player.vel.x * nx + this.player.vel.y * ny;
-        if (vn < 0) { this.player.vel.x -= 1.6 * vn * nx; this.player.vel.y -= 1.6 * vn * ny; }
-        // Nudge the ball a touch and ripple.
-        o.body.vel.x -= nx * 0.4; o.body.vel.y -= ny * 0.4;
-        this.sim.inject(this.player.uv.x, this.player.uv.y, -0.03, 0.05);
+        if (vn < 0) { this.player.vel.x -= 1.7 * vn * nx; this.player.vel.y -= 1.7 * vn * ny; }
+        // Nudge the ball, spin the duck a little, and splash on a hard carom.
+        o.body.vel.x -= nx * 0.5; o.body.vel.y -= ny * 0.5;
+        const impact = Math.abs(vn);
+        this.sim.tap(this.player.uv.x, this.player.uv.y, -0.04 - Math.min(0.1, impact * 0.012), 0.05);
+        if (impact > 3) {
+          this.player.spin += (Math.random() < 0.5 ? 1 : -1) * impact * 0.4;
+          this.audio?.plip?.();
+          // A hard bank shot: the ball takes the hit (no damage to the fish), flushes any
+          // fish hiding under it, and marks that spot "discovered" for 5s (no re-hiding there).
+          o.flushCd = 5;
+          for (const f of this.fish) { if (f.shelterBall && f.pos.distanceTo(o.body.pos) < 2.2) f.flush(); }
+        }
       }
     }
   }
