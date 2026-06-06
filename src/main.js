@@ -29,7 +29,7 @@ if (!floatOK) {
   throw new Error('No float render target support');
 }
 
-const MAX_DPR = 1.75;                     // clamp Retina cost (4× pixels → ~3×)
+const MAX_DPR = 2;                         // full Retina sharpness (baked caustics keep it 60fps)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_DPR));
 renderer.setClearColor(0x1f9fdd, 1);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -37,7 +37,7 @@ renderer.outputColorSpace = THREE.SRGBColorSpace;
 // ---------- scene / camera ----------
 const BOUNDS = 22;                       // world size of the (square) pool plane
 const GRID = (window.innerWidth < 700) ? 192 : 256;
-const VIEW = 13;                         // world units across the shorter viewport side (less zoom)
+const VIEW = 15;                         // world units across the shorter viewport side (less zoom)
 
 const scene = new THREE.Scene();
 const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);

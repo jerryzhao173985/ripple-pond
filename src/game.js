@@ -38,7 +38,7 @@ export class Game {
     this.placeScale = bounds * 0.4;
 
     // Player duck (used in both play and sandbox).
-    const d = makeDuck({ scale: 1.75 });
+    const d = makeDuck({ scale: 1.5 });
     this.playerVisual = d;
     scene.add(d.shadow, d.group);
     this.player = new FloatingBody(d.group, {

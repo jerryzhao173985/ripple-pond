@@ -72,7 +72,7 @@ const frag = /* glsl */`
     vec2 cuv = floorUv * uCausticScale;
     float c1 = texture2D(uCausticTex, cuv + f1 + n.xy * 0.6).r;
     float c2 = texture2D(uCausticTex, cuv * 1.37 + f2 - n.xy * 0.6).r;
-    float caustic = (c1 + c2) * 0.5 + c1 * c2 * 1.6;   // network + bright crossings
+    float caustic = (c1 + c2) * 0.5 + c1 * c2 * 0.9;   // network + (softer) bright crossings
 
     // Live ripples focus light (concave water → brighter), purely additive — never darkens.
     float lap = (hL + hR + hD + hU - 4.0 * hC);
@@ -114,8 +114,8 @@ export class WaterSurface {
       uGrid: { value: grid },
       uBounds: { value: bounds },
       uRefract: { value: 0.026 },
-      uCausticScale: { value: 5.5 },
-      uCausticStrength: { value: 0.32 },
+      uCausticScale: { value: 10.0 },
+      uCausticStrength: { value: 0.26 },
       uRippleFocus: { value: 5.0 },
       uSun: { value: new THREE.Vector3(0.45, 0.5, 0.75).normalize() },
       uCausticColor: { value: new THREE.Color(0.62, 0.9, 1.0) },

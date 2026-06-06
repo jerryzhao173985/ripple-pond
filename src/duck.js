@@ -172,8 +172,8 @@ export function makeDuck({ scale = 1, bodyColor = 0xffd21a, beakColor = 0xff8a1e
 
   // Waterline foam ring — a subtle bright meniscus where the duck meets the water.
   const foam = new THREE.Mesh(
-    new THREE.RingGeometry(0.66, 0.78, 44),
-    new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0.16, depthWrite: false, side: THREE.DoubleSide })
+    new THREE.RingGeometry(0.66, 0.74, 44),
+    new THREE.MeshBasicMaterial({ color: 0xeaf8ff, transparent: true, opacity: 0.1, depthWrite: false, side: THREE.DoubleSide })
   );
   foam.position.set(-0.05, 0, -0.09);
   group.add(foam);
