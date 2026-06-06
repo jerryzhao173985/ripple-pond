@@ -4,5 +4,9 @@
 # Playwright MCP scratch output
 .playwright-mcp/
 
+# Vercel local project link
+.vercel/
+
 # OS / editor noise
 .DS_Store
+.vercel
