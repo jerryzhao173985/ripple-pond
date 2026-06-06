@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__plugin_playwright_playwright__browser_evaluate",
+  "tool_input_preview": "{\"function\":\"() => {\\n  const P = window.__pond;\\n  P.renderer.render(P.scene, P.camera);\\n  const src = P.renderer.domElement;\\n  const w = 360, h = Math.round(w * src.height / src.width);\\n  const c...",
+  "error": "### Error\nbrowserBackend.callTool: TypeError: Cannot read properties of undefined (reading 'renderer')\n    at eval (eval at <anonymous> (eval at evaluate (:302:30)), <anonymous>:3:5)\n    at eval (eval at evaluate (:302:30), <anonymous>:4:50)\n    at UtilityScript.evaluate (<anonymous>:304:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)\n### Page\n- Page URL: about:blank",
+  "timestamp": "2026-06-05T14:34:03.792Z",
+  "retry_count": 1
+}

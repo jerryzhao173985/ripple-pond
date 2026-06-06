@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#1b9fe0" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦆</text></svg>" />
+  <title>Ripple Pond 🦆</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!--
+    ES-module importmap. three.js r0.184.0 + addons from jsDelivr.
+    NOTE: ES modules + importmaps do NOT load from file:// — serve over http:
+       cd /Users/jerry/pool && python3 -m http.server 8080   →  http://localhost:8080
+  -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <!-- ===== UI overlay (clean DOM, NOT the video's recording watermarks) ===== -->
+  <div id="ui">
+    <!-- In-game HUD -->
+    <header id="hud" class="hidden">
+      <button class="chip" id="btn-menu" title="Menu">☰</button>
+      <div class="chip" id="hud-level">Level 1</div>
+      <div class="chip" id="hud-ducklings">🐤 0/0</div>
+      <div class="chip" id="hud-strokes">💧 0</div>
+      <div class="chip" id="hud-time">⏱ 0.0s</div>
+      <button class="chip" id="btn-restart" title="Restart level">↻</button>
+    </header>
+
+    <!-- Title / main menu -->
+    <section id="menu" class="overlay">
+      <div class="panel">
+        <h1>Ripple&nbsp;Pond <span class="duck">🦆</span></h1>
+        <p class="tag">Fish hide in the pool. Ripple the water to glimpse them — then fling the duck to catch them.</p>
+        <div class="btn-row">
+          <button class="big" id="btn-hunt">🎣 Hunt the Fish</button>
+          <button class="big ghost" id="btn-sandbox">🌊 Free Play</button>
+        </div>
+        <button class="link" id="btn-play">Duck-herding levels →</button>
+        <p class="hint">Grab &amp; fling the duck (it glides &amp; bounces). Tap the water to ripple it and spot fish.</p>
+      </div>
+    </section>
+
+    <!-- Level select -->
+    <section id="levels" class="overlay hidden">
+      <div class="panel">
+        <h2>Level Select</h2>
+        <div id="level-grid" class="level-grid"></div>
+        <button class="link" id="btn-levels-back">← Back</button>
+      </div>
+    </section>
+
+    <!-- Win / level-complete -->
+    <section id="win" class="overlay hidden">
+      <div class="panel">
+        <h2 id="win-title">Level Complete!</h2>
+        <div id="win-stars" class="stars">★★★</div>
+        <p id="win-stats" class="stats"></p>
+        <div class="btn-row">
+          <button class="big" id="btn-next">Next ▶</button>
+          <button class="big ghost" id="btn-replay">↻ Replay</button>
+        </div>
+        <button class="link" id="btn-win-menu">Menu</button>
+      </div>
+    </section>
+
+    <!-- Hunt HUD -->
+    <div id="hunt-bar" class="hidden">
+      <button class="chip" id="btn-hunt-menu">☰</button>
+      <div class="chip" id="hunt-caught">🐟 0/0</div>
+      <div class="chip" id="hunt-time">⏱ 0.0s</div>
+      <button class="chip" id="btn-hunt-new">↻ New</button>
+      <span class="chip soft">Ripple to spot fish · fling the duck to catch</span>
+    </div>
+
+    <!-- Hunt win -->
+    <section id="hunt-win" class="overlay hidden">
+      <div class="panel">
+        <h2>🎉 You caught them all!</h2>
+        <p id="hunt-win-stats" class="stats"></p>
+        <div class="btn-row">
+          <button class="big" id="btn-hunt-again">🎣 Hunt again</button>
+          <button class="big ghost" id="btn-hunt-win-menu">Menu</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sandbox controls -->
+    <div id="sandbox-bar" class="hidden">
+      <button class="chip" id="btn-sb-menu">☰</button>
+      <button class="chip" id="btn-add-duck">+ 🦆</button>
+      <button class="chip" id="btn-calm">≈ Calm</button>
+      <span class="chip soft">Free Play — touch the water</span>
+    </div>
+
+    <!-- Fatal error / unsupported -->
+    <section id="fatal" class="overlay hidden">
+      <div class="panel">
+        <h2>Can't start the pool 😔</h2>
+        <p id="fatal-msg" class="tag"></p>
+      </div>
+    </section>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
